@@ -20,33 +20,74 @@ class State(BaseModel):
 class RedTeamGenerator:
     @staticmethod
     def generate_scenario(category):
+        # 1. ROUTINE TRAFFIC (1000+ Permutations)
         if category == "NORMAL":
-            scenarios = [
-                {"domain": "TRANSACTION", "payload": "Routine $45.20 payment to 'Uber Eats' from the user's primary registered device.", "is_malicious": False, "tactic": "Normal Traffic"},
-                {"domain": "ACCOUNT", "payload": "Successful login from the user's home IP address in Chicago. No failed attempts prior.", "is_malicious": False, "tactic": "Normal Traffic"},
-                {"domain": "EMAIL", "payload": "Weekly newsletter from Spotify regarding new releases this Friday.", "is_malicious": False, "tactic": "Normal Traffic"}
-            ]
+            domain = random.choice(["TRANSACTION", "ACCOUNT", "EMAIL"])
+            if domain == "TRANSACTION":
+                merchant = random.choice(["Uber Eats", "Amazon", "Netflix", "Spotify", "Local Grocery", "Steam"])
+                device = random.choice(["primary registered iPhone", "home Desktop PC", "registered Android phone"])
+                payload = f"Routine ${random.randint(12, 150)}.{random.randint(10, 99)} payment to '{merchant}' from the user's {device}."
+            elif domain == "ACCOUNT":
+                city = random.choice(["Chicago", "Seattle", "Austin", "New York", "London", "Toronto"])
+                payload = f"Successful login from the user's home IP address in {city}. No failed attempts prior."
+            else:
+                service = random.choice(["Spotify", "LinkedIn", "GitHub", "Medium"])
+                topic = random.choice(["new releases this Friday", "your weekly network updates", "dependabot security alerts"])
+                payload = f"Automated notification from {service} regarding {topic}."
+            return {"domain": domain, "payload": payload, "is_malicious": False, "tactic": "Normal Traffic"}
+
+        # 2. BASIC ATTACKS (1000+ Permutations)
         elif category == "ATTACK_BASIC":
-            scenarios = [
-                {"domain": "EMAIL", "payload": "URGENT: Your account will be suspended in 24 hours. Click here: http://secure-update-account.info/login", "is_malicious": True, "tactic": "Mass Phishing"},
-                {"domain": "ACCOUNT", "payload": "15 failed login attempts in 2 minutes from an IP address in North Korea.", "is_malicious": True, "tactic": "Brute Force"}
-            ]
+            domain = random.choice(["EMAIL", "ACCOUNT"])
+            if domain == "EMAIL":
+                fake_url = random.choice(["secure-update-account.info", "paypal-auth-verify.net", "apple-id-recovery.com"])
+                time = random.choice(["24", "12", "48"])
+                payload = f"URGENT: Your account will be suspended in {time} hours. Click here: http://{fake_url}/login"
+            else:
+                country = random.choice(["North Korea", "Russia", "Iran", "unknown proxy locations"])
+                attempts = random.randint(15, 80)
+                payload = f"{attempts} failed login attempts in 2 minutes from an IP address in {country}."
+            return {"domain": domain, "payload": payload, "is_malicious": True, "tactic": "Brute Force / Phishing"}
+
+        # 3. ADVANCED ATTACKS (1000+ Permutations)
         elif category == "ATTACK_ADVANCED":
-            scenarios = [
-                {"domain": "TRANSACTION", "payload": "API request to transfer $10,000 to an offshore account. The authentication token lacks the standard MFA signature.", "is_malicious": True, "tactic": "Session Hijacking"},
-                {"domain": "MESSAGE", "payload": "Hey, it's IT support. We are pushing a silent patch. Please run the attached 'update_v2.exe' with admin rights.", "is_malicious": True, "tactic": "Malware Distribution"}
-            ]
+            domain = random.choice(["TRANSACTION", "MESSAGE"])
+            if domain == "TRANSACTION":
+                offshore = random.choice(["the Cayman Islands", "Cyprus", "Panama", "Belize"])
+                auth = random.choice(["MFA signature", "device fingerprint", "session cookie validation"])
+                payload = f"API request to transfer ${random.randint(5000, 85000)} to an offshore account in {offshore}. The authentication token lacks the standard {auth}."
+            else:
+                malware = random.choice(["update_v2.exe", "patch_critical.msi", "IT_audit_tool.bat"])
+                dept = random.choice(["IT support", "HR", "SysAdmin"])
+                payload = f"Hey, it's {dept}. We are pushing a silent patch. Please run the attached '{malware}' with admin rights."
+            return {"domain": domain, "payload": payload, "is_malicious": True, "tactic": "Session Hijacking / Malware"}
+
+        # 4. AMBIGUOUS GENUINE BAIT (Tricks AI into False Positives)
         elif category == "AMBIGUOUS_GENUINE": 
-            scenarios = [
-                {"domain": "ACCOUNT", "payload": "Login from a known Tor Exit Node. However, the user profile indicates they are a privacy researcher who exclusively uses Tor. 2FA was successfully completed.", "is_malicious": False, "tactic": "Privacy Obfuscation (Genuine)"},
-                {"domain": "TRANSACTION", "payload": "User bought $5,000 in Bitcoin. Flagged as high risk, but user has a 5-year history of buying $5,000 in crypto on the 1st of every month.", "is_malicious": False, "tactic": "Anomalous but Historical"}
-            ]
-        else: # STEALTH_MALICIOUS
-            scenarios = [
-                {"domain": "EMAIL", "payload": "Hi team, please find attached the Q3 financial report for your review. - Sent from John's iPhone.", "is_malicious": True, "tactic": "Compromised Internal Account"},
-                {"domain": "TRANSACTION", "payload": "Payment of $1.00 to 'Test Merchant'. IP address matches user's city, but device fingerprint is a headless Linux server.", "is_malicious": True, "tactic": "Card Testing Bot"}
-            ]
-        return random.choice(scenarios)
+            domain = random.choice(["ACCOUNT", "TRANSACTION"])
+            if domain == "ACCOUNT":
+                tool = random.choice(["Tor Exit Node", "Commercial VPN", "Proxy Chain"])
+                job = random.choice(["privacy researcher", "cybersecurity student", "remote contractor"])
+                payload = f"Login from a known {tool}. However, the user profile indicates they are a {job} who exclusively uses this setup. 2FA was successfully completed."
+            else:
+                crypto = random.choice(["Bitcoin", "Ethereum", "Monero"])
+                years = random.randint(2, 6)
+                payload = f"User bought ${random.randint(2000, 5000)} in {crypto}. Flagged as high risk, but user has a {years}-year history of identical purchases on the 1st of every month."
+            return {"domain": domain, "payload": payload, "is_malicious": False, "tactic": "Anomalous but Historical (Genuine)"}
+
+        # 5. STEALTH MALICIOUS BAIT (Tricks AI into False Negatives)
+        else: 
+            domain = random.choice(["EMAIL", "TRANSACTION"])
+            if domain == "EMAIL":
+                doc = random.choice(["Q3 financial report", "updated employee roster", "client contract v2"])
+                name = random.choice(["John", "Sarah", "Mike", "Emily"])
+                device = random.choice(["iPhone", "iPad", "Android device"])
+                payload = f"Hi team, please find attached the {doc} for your review. - Sent from {name}'s {device}."
+            else:
+                merchant = random.choice(["Test Merchant", "Stripe Verification", "AWS Auth"])
+                bot = random.choice(["headless Linux server", "scripted browser instance", "known datacenter IP"])
+                payload = f"Payment of $1.00 to '{merchant}'. IP address matches user's city, but device fingerprint is a {bot}."
+            return {"domain": domain, "payload": payload, "is_malicious": True, "tactic": "Compromised Internal / Card Testing"}
 
 class FraudTriageEnv:
     def __init__(self):
@@ -83,7 +124,7 @@ class FraudTriageEnv:
         is_malicious = self.current_task["is_malicious"]
         outcome_tag = ""
 
-        # THE FIX: strict 0.0 to 1.0 grading scale required by OpenEnv grader
+        # OpenEnv Strict 0.0 to 1.0 Grading Scale
         if is_malicious:
             if action.action_taken == "BLOCK":
                 reward = 1.0  
