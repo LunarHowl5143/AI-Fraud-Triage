@@ -6,14 +6,20 @@ from dotenv import load_dotenv
 from models import FraudTriageEnv, Action
 
 load_dotenv()
-hf_token = os.environ.get("HF_TOKEN")
 
-if not hf_token:
+# --- HACKATHON REQUIRED ENVIRONMENT VARIABLES ---
+# The autograder will inject its own URL and Model here during evaluation
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+if not HF_TOKEN:
     raise ValueError("Missing HF_TOKEN! Add it to your .env file.")
 
+# --- REQUIRED OPENAI CLIENT SETUP ---
 client = OpenAI(
-    base_url="https://router.huggingface.co/v1",
-    api_key=hf_token
+    base_url=API_BASE_URL,
+    api_key=HF_TOKEN
 )
 
 def clean_and_parse_json(raw_text):
@@ -46,8 +52,9 @@ def agent_policy(observation):
     Keys: "action_taken" (APPROVE, ESCALATE, or BLOCK), "confidence" (0.0-1.0), "insight" (brief reason).
     """
 
+    # --- REQUIRED MODEL VARIABLE ---
     response = client.chat.completions.create(
-        model="Qwen/Qwen2.5-72B-Instruct", 
+        model=MODEL_NAME, 
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200
     )
@@ -56,22 +63,22 @@ def agent_policy(observation):
     return clean_and_parse_json(raw_response)
 
 if __name__ == "__main__":
-    print("\n[SYS] INITIATING RED TEAM VS BLUE TEAM SIMULATION...\n")
+    # --- STRICT HACKATHON GRADER LOGGING (START / STEP / END) ---
+    print("START")
     
     env = FraudTriageEnv()
     obs = env.reset()
     done = False
     
     while not done:
-        print(f"--- TURN {obs.turn_number} ---")
-        print(f"[SCENARIO]: {obs.payload} ({obs.attacker_tactic})")
+        print("STEP")
+        print(f"[SCENARIO]: {obs.payload}")
         
         action = agent_policy(obs)
         print(f"[BLUE TEAM ACTION]: {action.action_taken} (Confidence: {action.confidence})")
-        print(f"[INSIGHT]: {action.insight}")
         
         obs, reward, done, info = env.step(action)
-        print(f"[REWARD ISSUED]: {reward}\n")
+        print(f"[REWARD ISSUED]: {reward}")
         
-    print("=== SIMULATION COMPLETE ===")
+    print("END")
     print(f"Final Asymmetric Reward Score: {env.state.total_reward}")
