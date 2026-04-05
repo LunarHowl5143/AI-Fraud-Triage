@@ -8,14 +8,59 @@ import uvicorn
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from models import FraudTriageEnv, Observation
+from models import FraudTriageEnv, Observation, Action
 from inference import agent_policy
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 
+# Global state
 env = FraudTriageEnv()
 obs = env.reset()
+
+# =================================================================
+# --- REQUIRED OPENENV GRADER ENDPOINTS (THE FIX) ---
+# The automated grader expects standard RL API endpoints, not our UI endpoints.
+# =================================================================
+
+@app.post("/reset")
+async def grader_reset():
+    """Standard endpoint required by the OpenEnv automated evaluator."""
+    global env, obs
+    obs = env.reset()
+    return {"observation": obs}
+
+@app.post("/step")
+async def grader_step(action: Action):
+    """Standard endpoint required by the OpenEnv automated evaluator."""
+    global env, obs
+    
+    if env.state.is_done:
+        return {
+            "observation": obs,
+            "reward": 0.0,
+            "done": True,
+            "metadata": {"status": "Simulation already finished."}
+        }
+        
+    next_obs, reward, done, info = env.step(action)
+    
+    # If the simulation finishes, next_obs becomes None. 
+    # We pass the last known observation back so the grader's JSON schema doesn't crash.
+    safe_obs = next_obs if next_obs else obs
+    obs = safe_obs 
+    
+    return {
+        "observation": safe_obs,
+        "reward": float(reward),
+        "done": bool(done),
+        "metadata": info
+    }
+
+
+# =================================================================
+# --- CUSTOM CYBERPUNK UI ENDPOINTS ---
+# =================================================================
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_ui():
@@ -34,7 +79,7 @@ async def next_turn():
         raise HTTPException(status_code=500, detail=str(e))
     
     next_obs, reward, done, info = env.step(action)
-    obs = next_obs 
+    obs = next_obs if next_obs else obs
     
     return {
         "status": "success",
@@ -94,3 +139,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
