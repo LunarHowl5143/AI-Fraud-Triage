@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[SYS] AI_FRAUD_TRIAGE_ENV</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-base: #03050a;
+            --cyan-neon: #00ffff;
+            --red-neon: #ff003c;
+            --green-neon: #00ff41;
+            --orange-neon: #ff9900;
+            --panel-bg: rgba(4, 8, 15, 0.8);
+            --grid-line: rgba(0, 255, 255, 0.05);
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 30px 30px; color: var(--cyan-neon); font-family: var(--font-mono); margin: 0; padding: 20px; height: 100vh; box-sizing: border-box; display: flex; flex-direction: column;
+        }
+
+        .header-strip { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--cyan-neon); padding-bottom: 10px; margin-bottom: 20px; flex-shrink: 0; }
+        .header-title { font-size: 1.5rem; font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 255, 0.5); }
+        .header-status { color: var(--green-neon); font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 65, 0.5); }
+
+        .dashboard-grid { display: grid; grid-template-columns: 300px 1fr 350px; gap: 15px; margin-bottom: 15px; min-height: 400px; flex-grow: 1; }
+        .panel { background: var(--panel-bg); border: 1px solid var(--cyan-neon); border-radius: 4px; padding: 15px; display: flex; flex-direction: column; box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05); overflow-y: auto; }
+        .panel.full-width { flex-shrink: 0; height: 200px; }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: var(--cyan-neon); }
+
+        .section-title { font-weight: bold; margin-top: 0; margin-bottom: 15px; text-transform: uppercase; }
+        .baseline-box { border: 1px dashed var(--cyan-neon); padding: 15px; margin-bottom: 20px; }
+        .radar-box { border: 1px solid var(--red-neon); padding: 15px; color: var(--red-neon); }
+        .radar-box .section-title { color: var(--red-neon); }
+
+        button { background: transparent; color: var(--cyan-neon); border: 1px solid var(--cyan-neon); padding: 8px; width: 100%; margin-bottom: 10px; font-family: var(--font-mono); font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+        button:hover { background: rgba(0, 255, 255, 0.1); box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); }
+        .btn-green { color: var(--green-neon); border-color: var(--green-neon); }
+        .btn-green:hover { background: rgba(0, 255, 65, 0.1); box-shadow: 0 0 10px rgba(0, 255, 65, 0.3); }
+        .btn-red { color: var(--red-neon); border-color: var(--red-neon); background: rgba(255, 0, 60, 0.1); }
+        .btn-red:hover { box-shadow: 0 0 10px rgba(255, 0, 60, 0.5); }
+        
+        .btn-fatal { color: #fff; border-color: var(--orange-neon); background: rgba(255, 153, 0, 0.4); text-align: center; margin-top: 5px; font-weight: bold; cursor: default; pointer-events: none;}
+
+        select, textarea { width: 100%; background: #000; border: 1px solid var(--cyan-neon); color: var(--cyan-neon); padding: 8px; font-family: var(--font-mono); margin-bottom: 10px; box-sizing: border-box; }
+        .radar-box select, .radar-box textarea { border-color: var(--red-neon); color: var(--red-neon); }
+        textarea { height: 80px; resize: none; }
+
+        #terminal-output { color: #8892b0; font-size: 0.9rem; line-height: 1.5; flex-grow: 1; overflow-y: auto; padding-right: 10px; }
+        .term-cmd { color: var(--cyan-neon); }
+        .term-sys { color: #6272a4; }
+        .term-success { color: var(--green-neon); font-weight: bold;}
+        .term-alert { color: var(--red-neon); font-weight: bold;}
+        .term-warning { color: var(--orange-neon); font-weight: bold;}
+
+        .stats-container { margin-top: auto; border-top: 1px dashed var(--cyan-neon); padding-top: 15px; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
+        .stat-value { font-weight: bold; }
+        #log-container { font-size: 0.85rem; overflow-y: auto; height: calc(100% - 30px); }
+    </style>
+</head>
+<body>
+
+    <div class="header-strip">
+        <div class="header-title">[SYS] AI_FRAUD_TRIAGE_ENV</div>
+        <div class="header-status">SECURE CONNECTION ESTABLISHED</div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="panel">
+            <div class="baseline-box">
+                <div class="section-title">> BLUE VS RED SIMULATION</div>
+                <button onclick="runNextTurn()">> ADVANCE 1 TURN</button>
+                <br><br>
+                <button class="btn-green" onclick="runFullBaseline()">[ EXECUTE FULL SIMULATION ]</button>
+                <button class="btn-red" onclick="resetEnv()">[ C PURGE & RESET STATE ]</button>
+            </div>
+
+            <div class="radar-box">
+                <div class="section-title">[!] CUSTOM THREAT RADAR</div>
+                <select id="sandbox-domain">
+                    <option value="EMAIL">Domain: Email / Messaging</option>
+                    <option value="TRANSACTION">Domain: Transaction</option>
+                    <option value="ACCOUNT">Domain: Account Login</option>
+                </select>
+                <textarea id="sandbox-payload" placeholder="Paste data here for stateless agent analysis..."></textarea>
+                <button class="btn-red" onclick="runSandbox()">> ANALYZE THREAT (STATELESS)</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div id="terminal-output">
+                <span class="term-sys">Root@OpenEnv:~$ initialize_environment</span><br>
+                <span class="term-cmd">> Environment ready. Active simulation deck generated.</span><br><br>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="section-title">> REGIONAL TELEMETRY</div>
+            <div style="height: 180px; width: 100%;"><canvas id="telemetryChart"></canvas></div>
+            <div class="stats-container">
+                <div class="stat-row"><span>Active Nodes:</span><span class="stat-value" id="stat-nodes">2,401</span></div>
+                <div class="stat-row"><span>Threats Blocked:</span><span class="stat-value" id="stat-blocked">14,992</span></div>
+                <div class="stat-row" style="color: var(--green-neon); margin-top: 10px; border-top: 1px dashed var(--cyan-neon); padding-top: 5px;">
+                    <span>System Reward:</span><span class="stat-value" id="stat-reward">0.0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel full-width">
+        <div class="section-title">> LIVE AUDIT LOG</div>
+        <div id="log-container"><div>> WAITING FOR TELEMETRY DATA...</div></div>
+    </div>
+
+    <script>
+        const terminal = document.getElementById('terminal-output');
+        const logContainer = document.getElementById('log-container');
+        
+        function logToTerminal(text, type = 'sys') {
+            const span = document.createElement('span');
+            span.className = `term-${type}`;
+            span.innerHTML = text + '<br>';
+            terminal.appendChild(span);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        function injectFatalMistakeButton(outcome) {
+            if (outcome === "FALSE_POSITIVE") {
+                terminal.innerHTML += `<button class="btn-fatal">[!] MISTAKE: FLAGGED A GENUINE USER (0.0 REWARD)</button><br>`;
+            } else if (outcome === "MISSED_HACKER") {
+                terminal.innerHTML += `<button class="btn-fatal" style="background: rgba(255,0,0,0.4); border-color: red;">[!] FATAL: MISSED ACTIVE THREAT (0.0 REWARD)</button><br>`;
+            }
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function appendToAuditLog(domain, action, confidence, insight) {
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            const color = action === "APPROVE" ? "var(--green-neon)" : "var(--red-neon)";
+            const entry = `<div style="border-bottom: 1px solid rgba(0,255,255,0.1); padding: 5px 0; font-family: monospace;">
+                <span style="color:#6272a4">[${time}]</span> <span style="color:var(--cyan-neon); font-weight:bold">${domain}</span> : 
+                <span style="color:${color}; font-weight:bold">${action}</span> (Conf: ${confidence}) <br>
+                <span style="color:#8892b0; font-size: 0.8rem;">> INSIGHT: ${insight}</span>
+            </div>`;
+            logContainer.innerHTML = entry + logContainer.innerHTML;
+        }
+
+        // --- UPGRADED HIGH-TECH AI CHART ---
+        const ctx = document.getElementById('telemetryChart').getContext('2d');
+        Chart.defaults.color = '#6272a4';
+        Chart.defaults.font.family = "'Courier New', Courier, monospace";
+
+        const gradientCyan = ctx.createLinearGradient(0, 0, 0, 180);
+        gradientCyan.addColorStop(0, 'rgba(0, 255, 255, 0.4)');
+        gradientCyan.addColorStop(1, 'rgba(0, 255, 255, 0.0)');
+
+        const gradientRed = ctx.createLinearGradient(0, 0, 0, 180);
+        gradientRed.addColorStop(0, 'rgba(255, 0, 60, 0.4)');
+        gradientRed.addColorStop(1, 'rgba(255, 0, 60, 0.0)');
+
+        let phishingData = Array.from({length: 15}, () => 20);
+        let malwareData = Array.from({length: 15}, () => 40);
+        let labels = Array(15).fill('');
+
+        const telemetryChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: [
+                { 
+                    label: 'Phishing Vectors', borderColor: '#00ffff', backgroundColor: gradientCyan, 
+                    borderWidth: 2, fill: true, data: phishingData, tension: 0.4, pointRadius: 0, pointHoverRadius: 6 
+                },
+                { 
+                    label: 'Malware Payloads', borderColor: '#ff003c', backgroundColor: gradientRed, 
+                    borderWidth: 2, fill: true, data: malwareData, tension: 0.4, pointRadius: 0, pointHoverRadius: 6 
+                }
+            ]},
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                interaction: { mode: 'index', intersect: false }, 
+                scales: { 
+                    x: { display: false }, 
+                    y: { min: 0, max: 100, grid: { color: 'rgba(0, 255, 255, 0.05)' } } 
+                }, 
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(4, 8, 15, 0.95)',
+                        titleColor: '#00ff41',
+                        titleFont: { size: 13, family: "'Courier New', Courier, monospace", weight: 'bold' },
+                        bodyColor: '#fff',
+                        bodyFont: { size: 12, family: "'Courier New', Courier, monospace" },
+                        borderColor: 'rgba(0, 255, 255, 0.5)',
+                        borderWidth: 1,
+                        padding: 12,
+                        boxPadding: 6,
+                        callbacks: {
+                            title: function() { return "[SYS] AI NODE REALTIME SCAN"; },
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                let val = context.parsed.y.toFixed(1);
+                                let status = val > 75 ? " [CRITICAL THREAT]" : " [ROUTINE]";
+                                return `${label}: ${val} ops/sec ${status}`;
+                            },
+                            afterBody: function(context) {
+                                let conf = (Math.random() * 8 + 91).toFixed(2);
+                                let packet = (Math.random() * 1.5).toFixed(3);
+                                return `\n> NEURAL CONFIDENCE: ${conf}%\n> PACKET LOSS: ${packet}%\n> ENCRYPTION: AES-256 ACTIVE`;
+                            }
+                        }
+                    }
+                }, 
+                animation: { duration: 0 } 
+            }
+        });
+
+        let threatsBlocked = 14992;
+        let totalReward = 0.0;
+        let pendingSpike = null; 
+        let isSystemActive = true;
+
+        // Realistic Random Walk Algorithm
+        function nextValue(current, min, max, volatility) {
+            let change = (Math.random() * volatility * 2) - volatility;
+            let next = current + change;
+            if (next > max) return max - Math.abs(change);
+            if (next < min) return min + Math.abs(change);
+            return next;
+        }
+
+        setInterval(() => {
+            if (!isSystemActive) return;
+            phishingData.shift(); malwareData.shift(); labels.shift(); labels.push('');
+            
+            let lastPhishing = phishingData[phishingData.length - 1];
+            let lastMalware = malwareData[malwareData.length - 1];
+
+            if (pendingSpike !== null) {
+                phishingData.push(pendingSpike * 100 > 15 ? pendingSpike * 100 : 80);
+                malwareData.push(pendingSpike * 100 > 15 ? pendingSpike * 90 : 70);
+                threatsBlocked++; document.getElementById('stat-blocked').innerText = threatsBlocked.toLocaleString();
+                pendingSpike = null; 
+            } else {
+                phishingData.push(nextValue(lastPhishing, 10, 50, 6)); 
+                malwareData.push(nextValue(lastMalware, 20, 80, 8)); 
+            }
+            
+            document.getElementById('stat-nodes').innerText = (2400 + Math.floor(Math.random() * 80)).toLocaleString();
+            telemetryChart.update();
+        }, 1500); 
+
+        // --- API INTEGRATION ---
+        function triggerGraphSpike(confidence) { pendingSpike = confidence; }
+
+        async function runNextTurn() {
+            logToTerminal(`Root@OpenEnv:~$ advance_simulation_state`, 'sys');
+            logToTerminal(`> Generating log activity...`, 'cmd');
+
+            try {
+                const res = await fetch(`/api/next-turn`, { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.status === "complete") {
+                    logToTerminal(`> SIMULATION SEQUENCE COMPLETE.<br>`, 'term-success');
+                    return;
+                }
+
+                const actionClass = data.blue_team.action_taken === "APPROVE" ? "term-success" : "term-alert";
+                
+                logToTerminal(`[TURN ${data.turn}] | [CONTEXT]: ${data.red_team.tactic}`, 'sys');
+                logToTerminal(`[PAYLOAD]: ${data.red_team.payload}`, 'cmd');
+                logToTerminal(`[BLUE TEAM ACTION]: <span class="${actionClass}">${data.blue_team.action_taken}</span> | [CONFIDENCE]: ${(data.blue_team.confidence * 100).toFixed(1)}% | [REWARD]: ${data.reward}`, 'sys');
+                logToTerminal(`[INSIGHT]: ${data.blue_team.insight}<br>`, 'cmd');
+                
+                injectFatalMistakeButton(data.blue_team.outcome);
+                
+                triggerGraphSpike(data.blue_team.confidence);
+                appendToAuditLog(data.red_team.domain, data.blue_team.action_taken, data.blue_team.confidence.toFixed(2), data.blue_team.insight);
+                
+                totalReward += parseFloat(data.reward);
+                document.getElementById('stat-reward').innerText = totalReward.toFixed(1);
+            } catch (err) {
+                logToTerminal(`[ERROR]: Server timeout or disconnect.<br>`, 'term-alert');
+            }
+        }
+
+        async function runFullBaseline() {
+            logToTerminal(`Root@OpenEnv:~$ execute_full_sequence`, 'term-alert');
+            for (let i = 1; i <= 5; i++) {
+                await runNextTurn();
+                await new Promise(r => setTimeout(r, 4000));
+            }
+        }
+
+        async function runSandbox() {
+            const domain = document.getElementById('sandbox-domain').value;
+            const content = document.getElementById('sandbox-payload').value;
+            
+            if (!content) return logToTerminal(`[ERROR]: Payload empty.<br>`, 'term-alert');
+
+            logToTerminal(`Root@OpenEnv:~$ analyze_custom_radar --domain ${domain}`, 'sys');
+            try {
+                const res = await fetch('/api/custom-inject', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain: domain, content: content }) 
+                });
+                const data = await res.json();
+                const actionClass = data.action_taken === "APPROVE" ? "term-success" : "term-alert";
+                const verdictClass = data.verdict.includes("MALICIOUS") ? "term-alert" : "term-success";
+
+                logToTerminal(`[SANDBOX]: OFF-THE-RECORD ANALYSIS`, 'sys');
+                logToTerminal(`[AI VERDICT]: <span class="${verdictClass}">${data.verdict}</span>`, 'sys');
+                logToTerminal(`[BLUE TEAM ACTION]: <span class="${actionClass}">${data.action_taken}</span> | [CONFIDENCE]: ${(data.confidence * 100).toFixed(1)}%`, 'sys');
+                logToTerminal(`[INSIGHT]: ${data.insight}<br>`, 'cmd');
+                
+                triggerGraphSpike(data.confidence);
+                appendToAuditLog("SANDBOX", data.action_taken, data.confidence.toFixed(2), data.insight);
+            } catch (err) {
+                logToTerminal(`[ERROR]: Connection failed.<br>`, 'term-alert');
+            }
+        }
+
+        async function resetEnv() {
+            logToTerminal(`Root@OpenEnv:~$ purge_environment`, 'term-alert');
+            try {
+                await fetch('/api/reset', { method: 'POST' });
+                document.getElementById('terminal-output').innerHTML = `
+                    <span class="term-sys">Root@OpenEnv:~$ initialize_environment</span><br>
+                    <span class="term-cmd">> Environment purged. Active simulation deck generated.</span><br><br>`;
+                totalReward = 0.0; document.getElementById('stat-reward').innerText = "0.0";
+                logContainer.innerHTML = '';
+            } catch (err) { logToTerminal(`[ERROR]: Failed to purge.<br>`, 'term-alert'); }
+        }
+    </script>
+</body>
+</html>
