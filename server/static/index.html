@@ -27,11 +27,10 @@
         .header-title { font-size: 1.5rem; font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 255, 0.5); }
         .header-status { color: var(--green-neon); font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 65, 0.5); }
 
-        /* THE GENIUS FIX: CSS Grid Layout */
         .dashboard-grid { 
             display: grid; 
             grid-template-columns: 300px 1fr 350px; 
-            grid-template-rows: 1fr 150px; /* Top row takes remaining space, bottom is 150px */
+            grid-template-rows: 1fr 150px; 
             gap: 15px; 
             flex-grow: 1; 
             min-height: 0;
@@ -39,11 +38,10 @@
         
         .panel { background: var(--panel-bg); border: 1px solid var(--cyan-neon); border-radius: 4px; padding: 15px; display: flex; flex-direction: column; box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05); overflow-y: auto; }
         
-        /* Grid Assignments */
         .panel-left { grid-column: 1; grid-row: 1; }
         .panel-center { grid-column: 2; grid-row: 1; }
-        .panel-right { grid-column: 3; grid-row: 1 / span 2; position: relative; } /* Spans all the way to the bottom! */
-        .panel-bottom { grid-column: 1 / span 2; grid-row: 2; } /* Audit log reduced horizontally */
+        .panel-right { grid-column: 3; grid-row: 1 / span 2; position: relative; } 
+        .panel-bottom { grid-column: 1 / span 2; grid-row: 2; } 
 
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: var(--bg-base); }
@@ -120,11 +118,9 @@
         <div class="panel panel-right">
             <div class="section-title">> REGIONAL TELEMETRY</div>
             
-            <div style="height: 140px; width: 100%; position: relative;">
+            <div style="flex-grow: 1; min-height: 250px; width: 100%; position: relative; margin-bottom: 15px;">
                 <canvas id="telemetryChart"></canvas>
             </div>
-
-            <div style="flex-grow: 1; position: relative;"></div>
 
             <div class="stats-container">
                 <div class="stat-row"><span>Active Nodes:</span><span class="stat-value" id="stat-nodes">2,401</span></div>
@@ -179,65 +175,64 @@
             const {chart, tooltip} = context;
             let tooltipEl = document.getElementById('chartjs-tooltip');
             
-            // Generate HTML element if it doesn't exist
             if (!tooltipEl) {
                 tooltipEl = document.createElement('div');
                 tooltipEl.id = 'chartjs-tooltip';
-                tooltipEl.style.background = 'rgba(4, 8, 15, 0.95)';
-                tooltipEl.style.border = '1px solid rgba(0, 255, 255, 0.3)';
-                tooltipEl.style.boxShadow = '0 0 15px rgba(0, 255, 255, 0.1)';
+                
+                // THE FIX: Clean transparency, NO BLUR!
+                tooltipEl.style.background = 'rgba(4, 8, 15, 0.75)'; // Dark enough to read text, clear enough to see lines
+                
+                tooltipEl.style.border = '1px solid rgba(0, 255, 255, 0.4)';
+                tooltipEl.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.15)';
                 tooltipEl.style.color = '#fff';
                 tooltipEl.style.opacity = 1;
                 tooltipEl.style.pointerEvents = 'none';
                 tooltipEl.style.position = 'absolute';
-                tooltipEl.style.transition = 'all .15s ease';
+                tooltipEl.style.transition = 'all .1s ease';
                 tooltipEl.style.padding = '12px';
-                tooltipEl.style.zIndex = 99;
-                tooltipEl.style.width = 'calc(100% - 24px)';
+                tooltipEl.style.zIndex = 100;
+                tooltipEl.style.width = 'calc(100% - 30px)';
                 chart.canvas.parentNode.appendChild(tooltipEl);
             }
 
-            // Hide if not hovering
             if (tooltip.opacity === 0) {
                 tooltipEl.style.opacity = 0;
                 return;
             }
 
-            // Populate the massive glass panel text
             if (tooltip.body) {
-                let innerHtml = `<div style="color: #00ff41; font-weight: bold; margin-bottom: 10px;">[SYS] AI NODE REALTIME SCAN</div>`;
+                let innerHtml = `<div style="color: #00ff41; font-weight: bold; margin-bottom: 10px; text-shadow: 0 0 5px rgba(0,255,65,0.5);">[SYS] AI NODE REALTIME SCAN</div>`;
                 let dataLines = tooltip.body.map(b => b.lines);
                 
                 dataLines.forEach(line => {
                     let parts = line[0].split(':');
                     let label = parts[0];
                     let val = parseFloat(parts[1]);
-                    let status = val > 75 ? "<span style='color:#ff003c; font-weight:bold;'>[CRITICAL]</span>" : "<span style='color:#6272a4'>[ROUTINE]</span>";
+                    let status = val > 75 ? "<span style='color:#ff003c; font-weight:bold; text-shadow: 0 0 5px rgba(255,0,60,0.5);'>[CRITICAL]</span>" : "<span style='color:#6272a4'>[ROUTINE]</span>";
                     innerHtml += `<div style="margin-bottom: 5px;">${label}: ${val.toFixed(1)} ops/sec ${status}</div>`;
                 });
                 
                 let conf = (Math.random() * 8 + 91).toFixed(2);
                 let packet = (Math.random() * 1.5).toFixed(3);
-                innerHtml += `<div style="margin-top: 12px; color: var(--cyan-neon); font-size: 0.95em; border-top: 1px dashed rgba(0,255,255,0.2); padding-top: 10px;">> NEURAL CONFIDENCE: ${conf}%<br>> PACKET LOSS: ${packet}%<br>> ENCRYPTION: AES-256 ACTIVE</div>`;
+                innerHtml += `<div style="margin-top: 12px; color: var(--cyan-neon); font-size: 0.95em; border-top: 1px dashed rgba(0,255,255,0.3); padding-top: 10px; text-shadow: 0 0 5px rgba(0,255,255,0.3);">> NEURAL CONFIDENCE: ${conf}%<br>> PACKET LOSS: ${packet}%<br>> ENCRYPTION: AES-256 ACTIVE</div>`;
 
                 tooltipEl.innerHTML = innerHtml;
             }
 
             tooltipEl.style.opacity = 1;
-            // Spawn perfectly in the empty middle space!
-            tooltipEl.style.left = '12px';
-            tooltipEl.style.top = '160px'; 
+            tooltipEl.style.left = '15px';
+            tooltipEl.style.top = '60px'; 
         };
 
         const ctx = document.getElementById('telemetryChart').getContext('2d');
         Chart.defaults.color = '#6272a4';
         Chart.defaults.font.family = "'Courier New', Courier, monospace";
 
-        const gradientCyan = ctx.createLinearGradient(0, 0, 0, 140);
+        const gradientCyan = ctx.createLinearGradient(0, 0, 0, 200);
         gradientCyan.addColorStop(0, 'rgba(0, 255, 255, 0.4)');
         gradientCyan.addColorStop(1, 'rgba(0, 255, 255, 0.0)');
 
-        const gradientRed = ctx.createLinearGradient(0, 0, 0, 140);
+        const gradientRed = ctx.createLinearGradient(0, 0, 0, 200);
         gradientRed.addColorStop(0, 'rgba(255, 0, 60, 0.4)');
         gradientRed.addColorStop(1, 'rgba(255, 0, 60, 0.0)');
 
@@ -267,8 +262,8 @@
                 plugins: { 
                     legend: { display: false },
                     tooltip: {
-                        enabled: false, // Disables the buggy internal tooltip
-                        external: externalTooltipHandler // Activates our custom layout fix
+                        enabled: false, 
+                        external: externalTooltipHandler 
                     }
                 }, 
                 animation: { duration: 0 } 
