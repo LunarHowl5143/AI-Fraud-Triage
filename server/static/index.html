@@ -191,6 +191,8 @@
                 plugins: { 
                     legend: { display: false },
                     tooltip: {
+                        yAlign: 'top', // FIX 2: THIS SHIFTS THE PANEL DOWN!
+                        caretPadding: 15, // Adds a little breathing room below the mouse cursor
                         backgroundColor: 'rgba(4, 8, 15, 0.95)',
                         titleColor: '#00ff41',
                         titleFont: { size: 13, family: "'Courier New', Courier, monospace", weight: 'bold' },
@@ -224,6 +226,7 @@
         let totalReward = 0.0;
         let pendingSpike = null; 
         let isSystemActive = true;
+        let stopSimulation = false; // FIX 1: The Kill Switch for the ghost logs!
 
         // Realistic Random Walk Algorithm
         function nextValue(current, min, max, volatility) {
@@ -259,6 +262,8 @@
         function triggerGraphSpike(confidence) { pendingSpike = confidence; }
 
         async function runNextTurn() {
+            if (stopSimulation) return; // Kills stray requests if reset was clicked
+
             logToTerminal(`Root@OpenEnv:~$ advance_simulation_state`, 'sys');
             logToTerminal(`> Generating log activity...`, 'cmd');
 
@@ -266,6 +271,8 @@
                 const res = await fetch(`/api/next-turn`, { method: 'POST' });
                 const data = await res.json();
                 
+                if (stopSimulation) return; // Prevents logging if reset was clicked while waiting for the AI
+
                 if (data.status === "complete") {
                     logToTerminal(`> SIMULATION SEQUENCE COMPLETE.<br>`, 'term-success');
                     return;
@@ -284,15 +291,20 @@
                 appendToAuditLog(data.red_team.domain, data.blue_team.action_taken, data.blue_team.confidence.toFixed(2), data.blue_team.insight);
                 
                 totalReward += parseFloat(data.reward);
-                document.getElementById('stat-reward').innerText = totalReward.toFixed(1);
+                document.getElementById('stat-reward').innerText = totalReward.toFixed(3);
             } catch (err) {
-                logToTerminal(`[ERROR]: Server timeout or disconnect.<br>`, 'term-alert');
+                if (!stopSimulation) logToTerminal(`[ERROR]: Server timeout or disconnect.<br>`, 'term-alert');
             }
         }
 
         async function runFullBaseline() {
+            stopSimulation = false; // Resets the kill switch
             logToTerminal(`Root@OpenEnv:~$ execute_full_sequence`, 'term-alert');
             for (let i = 1; i <= 5; i++) {
+                if (stopSimulation) {
+                    logToTerminal(`> SEQUENCE ABORTED.<br>`, 'term-warning');
+                    break;
+                }
                 await runNextTurn();
                 await new Promise(r => setTimeout(r, 4000));
             }
@@ -328,14 +340,17 @@
         }
 
         async function resetEnv() {
+            stopSimulation = true; // Activating the kill switch for any running loops!
             logToTerminal(`Root@OpenEnv:~$ purge_environment`, 'term-alert');
             try {
                 await fetch('/api/reset', { method: 'POST' });
                 document.getElementById('terminal-output').innerHTML = `
                     <span class="term-sys">Root@OpenEnv:~$ initialize_environment</span><br>
                     <span class="term-cmd">> Environment purged. Active simulation deck generated.</span><br><br>`;
-                totalReward = 0.0; document.getElementById('stat-reward').innerText = "0.0";
-                logContainer.innerHTML = '';
+                
+                totalReward = 0.0; 
+                document.getElementById('stat-reward').innerText = "0.0"; // Safely reset back to zero
+                logContainer.innerHTML = '<div>> WAITING FOR TELEMETRY DATA...</div>';
             } catch (err) { logToTerminal(`[ERROR]: Failed to purge.<br>`, 'term-alert'); }
         }
     </script>
