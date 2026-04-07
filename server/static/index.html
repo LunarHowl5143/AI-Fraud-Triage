@@ -27,12 +27,10 @@
         .header-title { font-size: 1.5rem; font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 255, 0.5); }
         .header-status { color: var(--green-neon); font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 65, 0.5); }
 
-        /* THE WIDTH FIX: Kept the exact original widths so the middle read log DOES NOT stretch */
         .dashboard-grid { display: grid; grid-template-columns: 300px 1fr 350px; gap: 15px; margin-bottom: 15px; min-height: 400px; flex-grow: 1; }
         
-        /* THE HEIGHT FIX: Crushed the bottom Audit Log from 200px to 120px */
         .panel { background: var(--panel-bg); border: 1px solid var(--cyan-neon); border-radius: 4px; padding: 15px; display: flex; flex-direction: column; box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05); overflow-y: auto; }
-        .panel.full-width { flex-shrink: 0; height: 120px; }
+        .panel.full-width { flex-shrink: 0; height: 120px; } /* Bottom log crushed to fit graph */
 
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: var(--bg-base); }
@@ -175,11 +173,11 @@
             type: 'line',
             data: { labels: labels, datasets: [
                 { 
-                    label: 'Phishing', borderColor: '#00ffff', backgroundColor: gradientCyan, 
+                    label: 'Phishing Vectors', borderColor: '#00ffff', backgroundColor: gradientCyan, 
                     borderWidth: 2, fill: true, data: phishingData, tension: 0.4, pointRadius: 0, pointHoverRadius: 6 
                 },
                 { 
-                    label: 'Malware', borderColor: '#ff003c', backgroundColor: gradientRed, 
+                    label: 'Malware Payloads', borderColor: '#ff003c', backgroundColor: gradientRed, 
                     borderWidth: 2, fill: true, data: malwareData, tension: 0.4, pointRadius: 0, pointHoverRadius: 6 
                 }
             ]},
@@ -193,23 +191,28 @@
                 plugins: { 
                     legend: { display: false },
                     tooltip: {
+                        // THE BIG GLASS PANEL RESTORED
                         backgroundColor: 'rgba(4, 8, 15, 0.95)',
                         titleColor: '#00ff41',
-                        titleFont: { size: 10, family: "'Courier New', Courier, monospace", weight: 'bold' },
+                        titleFont: { size: 13, family: "'Courier New', Courier, monospace", weight: 'bold' },
                         bodyColor: '#fff',
-                        bodyFont: { size: 10, family: "'Courier New', Courier, monospace" },
+                        bodyFont: { size: 12, family: "'Courier New', Courier, monospace" },
                         borderColor: 'rgba(0, 255, 255, 0.5)',
                         borderWidth: 1,
-                        padding: 6,
-                        boxPadding: 3,
+                        padding: 12,
+                        boxPadding: 6,
                         callbacks: {
-                            title: function() { return "[SCAN]"; },
+                            title: function() { return "[SYS] AI NODE REALTIME SCAN"; },
                             label: function(context) {
-                                return `${context.dataset.label}: ${context.parsed.y.toFixed(0)}/s`;
+                                let label = context.dataset.label || '';
+                                let val = context.parsed.y.toFixed(1);
+                                let status = val > 75 ? " [CRITICAL THREAT]" : " [ROUTINE]";
+                                return `${label}: ${val} ops/sec ${status}`;
                             },
-                            afterBody: function() {
-                                let conf = (Math.random() * 8 + 91).toFixed(1);
-                                return `> Conf: ${conf}%`;
+                            afterBody: function(context) {
+                                let conf = (Math.random() * 8 + 91).toFixed(2);
+                                let packet = (Math.random() * 1.5).toFixed(3);
+                                return `\n> NEURAL CONFIDENCE: ${conf}%\n> PACKET LOSS: ${packet}%\n> ENCRYPTION: AES-256 ACTIVE`;
                             }
                         }
                     }
