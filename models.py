@@ -20,7 +20,7 @@ class State(BaseModel):
 class RedTeamGenerator:
     @staticmethod
     def generate_scenario(category):
-        # 1. ROUTINE TRAFFIC (1000+ Permutations)
+        # 1. ROUTINE TRAFFIC 
         if category == "NORMAL":
             domain = random.choice(["TRANSACTION", "ACCOUNT", "EMAIL"])
             if domain == "TRANSACTION":
@@ -36,7 +36,7 @@ class RedTeamGenerator:
                 payload = f"Automated notification from {service} regarding {topic}."
             return {"domain": domain, "payload": payload, "is_malicious": False, "tactic": "Normal Traffic"}
 
-        # 2. BASIC ATTACKS (1000+ Permutations)
+        # 2. BASIC ATTACKS 
         elif category == "ATTACK_BASIC":
             domain = random.choice(["EMAIL", "ACCOUNT"])
             if domain == "EMAIL":
@@ -49,7 +49,7 @@ class RedTeamGenerator:
                 payload = f"{attempts} failed login attempts in 2 minutes from an IP address in {country}."
             return {"domain": domain, "payload": payload, "is_malicious": True, "tactic": "Brute Force / Phishing"}
 
-        # 3. ADVANCED ATTACKS (1000+ Permutations)
+        # 3. ADVANCED ATTACKS
         elif category == "ATTACK_ADVANCED":
             domain = random.choice(["TRANSACTION", "MESSAGE"])
             if domain == "TRANSACTION":
@@ -62,7 +62,7 @@ class RedTeamGenerator:
                 payload = f"Hey, it's {dept}. We are pushing a silent patch. Please run the attached '{malware}' with admin rights."
             return {"domain": domain, "payload": payload, "is_malicious": True, "tactic": "Session Hijacking / Malware"}
 
-        # 4. AMBIGUOUS GENUINE BAIT (Tricks AI into False Positives)
+        # 4. AMBIGUOUS GENUINE BAIT
         elif category == "AMBIGUOUS_GENUINE": 
             domain = random.choice(["ACCOUNT", "TRANSACTION"])
             if domain == "ACCOUNT":
@@ -75,7 +75,7 @@ class RedTeamGenerator:
                 payload = f"User bought ${random.randint(2000, 5000)} in {crypto}. Flagged as high risk, but user has a {years}-year history of identical purchases on the 1st of every month."
             return {"domain": domain, "payload": payload, "is_malicious": False, "tactic": "Anomalous but Historical (Genuine)"}
 
-        # 5. STEALTH MALICIOUS BAIT (Tricks AI into False Negatives)
+        # 5. STEALTH MALICIOUS BAIT
         else: 
             domain = random.choice(["EMAIL", "TRANSACTION"])
             if domain == "EMAIL":
@@ -98,14 +98,14 @@ class FraudTriageEnv:
     def reset(self) -> Observation:
         self.state = State(current_turn=1, total_reward=0.0, is_done=False)
         
-        self.deck = [
+        categories = [
             "NORMAL", 
             "ATTACK_BASIC", 
             "ATTACK_ADVANCED", 
             "AMBIGUOUS_GENUINE", 
             "STEALTH_MALICIOUS"
         ]
-        random.shuffle(self.deck)
+        self.deck = [random.choice(categories) for _ in range(5)]
         
         self.current_task = RedTeamGenerator.generate_scenario(self.deck.pop())
         
@@ -124,31 +124,39 @@ class FraudTriageEnv:
         is_malicious = self.current_task["is_malicious"]
         outcome_tag = ""
 
-        # OpenEnv Strict 0.0 to 1.0 Grading Scale
+        # --- THE FIX: CONFIDENCE-WEIGHTED REWARDS ---
+        # Clamp the AI's confidence to ensure it stays strictly between 0.0 and 1.0
+        confidence_multiplier = max(0.0, min(1.0, action.confidence))
+
         if is_malicious:
             if action.action_taken == "BLOCK":
-                reward = 1.0  
+                # Max reward of 1.0, scaled down if the AI is unsure
+                reward = 1.0 * confidence_multiplier  
                 outcome_tag = "CAUGHT_HACKER"
             elif action.action_taken == "ESCALATE":
-                reward = 0.5  
+                # Max reward of 0.5, scaled down if the AI is unsure
+                reward = 0.5 * confidence_multiplier  
                 outcome_tag = "ESCALATED_SAFELY"
             else:
                 reward = 0.0 
                 outcome_tag = "MISSED_HACKER"
         else:
             if action.action_taken == "APPROVE":
-                reward = 1.0  
+                reward = 1.0 * confidence_multiplier  
                 outcome_tag = "APPROVED_USER"
             else:
                 reward = 0.0 
                 outcome_tag = "FALSE_POSITIVE"
+
+        # Round to 3 decimal places to keep the UI clean
+        reward = round(reward, 3)
 
         self.state.total_reward += reward
         self.state.current_turn += 1
 
         if self.state.current_turn > 5:
             self.state.is_done = True
-            return None, reward, True, {"final_score": self.state.total_reward, "outcome": outcome_tag}
+            return None, reward, True, {"final_score": round(self.state.total_reward, 3), "outcome": outcome_tag}
 
         self.current_task = RedTeamGenerator.generate_scenario(self.deck.pop())
         
@@ -160,3 +168,4 @@ class FraudTriageEnv:
         )
 
         return next_obs, reward, self.state.is_done, {"insight": action.insight, "outcome": outcome_tag}
+        
