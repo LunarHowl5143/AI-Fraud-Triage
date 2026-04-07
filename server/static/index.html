@@ -27,8 +27,8 @@
         .header-title { font-size: 1.5rem; font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 255, 0.5); }
         .header-status { color: var(--green-neon); font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 65, 0.5); }
 
-        /* FIX 1: Reduced the third column (telemetry) from 350px to 280px */
-        .dashboard-grid { display: grid; grid-template-columns: 300px 1fr 280px; gap: 15px; margin-bottom: 15px; min-height: 400px; flex-grow: 1; }
+        /* REVERTED: Back to the original 350px width so the middle terminal stays the correct size */
+        .dashboard-grid { display: grid; grid-template-columns: 300px 1fr 350px; gap: 15px; margin-bottom: 15px; min-height: 400px; flex-grow: 1; }
         .panel { background: var(--panel-bg); border: 1px solid var(--cyan-neon); border-radius: 4px; padding: 15px; display: flex; flex-direction: column; box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05); overflow-y: auto; }
         .panel.full-width { flex-shrink: 0; height: 200px; }
 
@@ -62,7 +62,7 @@
         .term-warning { color: var(--orange-neon); font-weight: bold;}
 
         .stats-container { margin-top: auto; border-top: 1px dashed var(--cyan-neon); padding-top: 15px; }
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
         .stat-value { font-weight: bold; }
         #log-container { font-size: 0.85rem; overflow-y: auto; height: calc(100% - 30px); }
     </style>
@@ -105,7 +105,7 @@
 
         <div class="panel">
             <div class="section-title">> REGIONAL TELEMETRY</div>
-            <div style="height: 130px; width: 100%; margin-bottom: 15px; position: relative;"><canvas id="telemetryChart"></canvas></div>
+            <div style="height: 160px; width: 100%; margin-bottom: 15px; position: relative;"><canvas id="telemetryChart"></canvas></div>
             <div class="stats-container">
                 <div class="stat-row"><span>Active Nodes:</span><span class="stat-value" id="stat-nodes">2,401</span></div>
                 <div class="stat-row"><span>Threats Blocked:</span><span class="stat-value" id="stat-blocked">14,992</span></div>
@@ -191,7 +191,6 @@
                 plugins: { 
                     legend: { display: false },
                     tooltip: {
-                        // FIX 3: Micro-tooltip so it doesn't cover the lines
                         backgroundColor: 'rgba(4, 8, 15, 0.95)',
                         titleColor: '#00ff41',
                         titleFont: { size: 10, family: "'Courier New', Courier, monospace", weight: 'bold' },
@@ -349,4 +348,3 @@
     </script>
 </body>
 </html>
-
