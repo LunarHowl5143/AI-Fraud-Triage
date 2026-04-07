@@ -104,7 +104,7 @@
 
         <div class="panel">
             <div class="section-title">> REGIONAL TELEMETRY</div>
-            <div style="height: 180px; width: 100%;"><canvas id="telemetryChart"></canvas></div>
+            <div style="flex-grow: 1; min-height: 220px; width: 100%; margin-bottom: 10px;"><canvas id="telemetryChart"></canvas></div>
             <div class="stats-container">
                 <div class="stat-row"><span>Active Nodes:</span><span class="stat-value" id="stat-nodes">2,401</span></div>
                 <div class="stat-row"><span>Threats Blocked:</span><span class="stat-value" id="stat-blocked">14,992</span></div>
@@ -152,7 +152,6 @@
             logContainer.innerHTML = entry + logContainer.innerHTML;
         }
 
-        // --- UPGRADED HIGH-TECH AI CHART ---
         const ctx = document.getElementById('telemetryChart').getContext('2d');
         Chart.defaults.color = '#6272a4';
         Chart.defaults.font.family = "'Courier New', Courier, monospace";
@@ -191,29 +190,29 @@
                 plugins: { 
                     legend: { display: false },
                     tooltip: {
-                        yAlign: 'top', // FIX 2: THIS SHIFTS THE PANEL DOWN!
-                        caretPadding: 15, // Adds a little breathing room below the mouse cursor
+                        // FIX: Removed the forced 'top' alignment, reduced padding slightly
+                        caretPadding: 10,
                         backgroundColor: 'rgba(4, 8, 15, 0.95)',
                         titleColor: '#00ff41',
-                        titleFont: { size: 13, family: "'Courier New', Courier, monospace", weight: 'bold' },
+                        titleFont: { size: 12, family: "'Courier New', Courier, monospace", weight: 'bold' },
                         bodyColor: '#fff',
-                        bodyFont: { size: 12, family: "'Courier New', Courier, monospace" },
+                        bodyFont: { size: 11, family: "'Courier New', Courier, monospace" },
                         borderColor: 'rgba(0, 255, 255, 0.5)',
                         borderWidth: 1,
-                        padding: 12,
-                        boxPadding: 6,
+                        padding: 10,
+                        boxPadding: 4,
                         callbacks: {
                             title: function() { return "[SYS] AI NODE REALTIME SCAN"; },
                             label: function(context) {
                                 let label = context.dataset.label || '';
                                 let val = context.parsed.y.toFixed(1);
-                                let status = val > 75 ? " [CRITICAL THREAT]" : " [ROUTINE]";
+                                let status = val > 75 ? " [CRITICAL]" : " [ROUTINE]";
                                 return `${label}: ${val} ops/sec ${status}`;
                             },
                             afterBody: function(context) {
                                 let conf = (Math.random() * 8 + 91).toFixed(2);
                                 let packet = (Math.random() * 1.5).toFixed(3);
-                                return `\n> NEURAL CONFIDENCE: ${conf}%\n> PACKET LOSS: ${packet}%\n> ENCRYPTION: AES-256 ACTIVE`;
+                                return `\n> NEURAL CONFIDENCE: ${conf}%\n> PACKET LOSS: ${packet}%`;
                             }
                         }
                     }
@@ -226,9 +225,8 @@
         let totalReward = 0.0;
         let pendingSpike = null; 
         let isSystemActive = true;
-        let stopSimulation = false; // FIX 1: The Kill Switch for the ghost logs!
+        let stopSimulation = false; 
 
-        // Realistic Random Walk Algorithm
         function nextValue(current, min, max, volatility) {
             let change = (Math.random() * volatility * 2) - volatility;
             let next = current + change;
@@ -258,11 +256,10 @@
             telemetryChart.update();
         }, 1500); 
 
-        // --- API INTEGRATION ---
         function triggerGraphSpike(confidence) { pendingSpike = confidence; }
 
         async function runNextTurn() {
-            if (stopSimulation) return; // Kills stray requests if reset was clicked
+            if (stopSimulation) return;
 
             logToTerminal(`Root@OpenEnv:~$ advance_simulation_state`, 'sys');
             logToTerminal(`> Generating log activity...`, 'cmd');
@@ -271,7 +268,7 @@
                 const res = await fetch(`/api/next-turn`, { method: 'POST' });
                 const data = await res.json();
                 
-                if (stopSimulation) return; // Prevents logging if reset was clicked while waiting for the AI
+                if (stopSimulation) return; 
 
                 if (data.status === "complete") {
                     logToTerminal(`> SIMULATION SEQUENCE COMPLETE.<br>`, 'term-success');
@@ -298,7 +295,7 @@
         }
 
         async function runFullBaseline() {
-            stopSimulation = false; // Resets the kill switch
+            stopSimulation = false; 
             logToTerminal(`Root@OpenEnv:~$ execute_full_sequence`, 'term-alert');
             for (let i = 1; i <= 5; i++) {
                 if (stopSimulation) {
@@ -340,7 +337,7 @@
         }
 
         async function resetEnv() {
-            stopSimulation = true; // Activating the kill switch for any running loops!
+            stopSimulation = true; 
             logToTerminal(`Root@OpenEnv:~$ purge_environment`, 'term-alert');
             try {
                 await fetch('/api/reset', { method: 'POST' });
@@ -349,7 +346,7 @@
                     <span class="term-cmd">> Environment purged. Active simulation deck generated.</span><br><br>`;
                 
                 totalReward = 0.0; 
-                document.getElementById('stat-reward').innerText = "0.0"; // Safely reset back to zero
+                document.getElementById('stat-reward').innerText = "0.0"; 
                 logContainer.innerHTML = '<div>> WAITING FOR TELEMETRY DATA...</div>';
             } catch (err) { logToTerminal(`[ERROR]: Failed to purge.<br>`, 'term-alert'); }
         }
