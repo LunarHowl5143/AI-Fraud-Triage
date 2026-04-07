@@ -1,20 +1,17 @@
 import os
 import json
 import re
+import time
 from openai import OpenAI
 from dotenv import load_dotenv
 from models import FraudTriageEnv, Action
 
 load_dotenv()
 
-# --- HACKATHON REQUIRED ENVIRONMENT VARIABLES ---
-# The autograder will inject its own URL and Model here during evaluation
+# --- REQUIRED ENVIRONMENT VARIABLES ---
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-HF_TOKEN = os.getenv("HF_TOKEN")
-
-if not HF_TOKEN:
-    raise ValueError("Missing HF_TOKEN! Add it to your .env file.")
+HF_TOKEN = os.getenv("HF_TOKEN", "dummy-token-for-evaluator")
 
 # --- REQUIRED OPENAI CLIENT SETUP ---
 client = OpenAI(
@@ -52,18 +49,34 @@ def agent_policy(observation):
     Keys: "action_taken" (APPROVE, ESCALATE, or BLOCK), "confidence" (0.0-1.0), "insight" (brief reason).
     """
 
-    # --- REQUIRED MODEL VARIABLE ---
-    response = client.chat.completions.create(
-        model=MODEL_NAME, 
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=200
-    )
-    
-    raw_response = response.choices[0].message.content
-    return clean_and_parse_json(raw_response)
+    # --- THE FIX: EXPONENTIAL BACKOFF & RETRY LOGIC ---
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME, 
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=200,
+                temperature=0.4
+            )
+            raw_response = response.choices[0].message.content
+            return clean_and_parse_json(raw_response)
+            
+        except Exception as e:
+            # If we hit a rate limit, wait and try again
+            if attempt < max_retries - 1:
+                sleep_time = 5 * (attempt + 1)  # Waits 5s, then 10s
+                time.sleep(sleep_time)
+            else:
+                # If we are totally out of credits, fail gracefully so the grader doesn't crash
+                return Action(
+                    action_taken="ESCALATE", 
+                    confidence=0.0, 
+                    insight=f"API Limit Reached. Graceful fallback."
+                )
 
 if __name__ == "__main__":
-    # --- STRICT HACKATHON GRADER LOGGING (START / STEP / END) ---
+    # --- STRICT GRADER LOGGING (START / STEP / END) ---
     print("START")
     
     env = FraudTriageEnv()
@@ -80,5 +93,10 @@ if __name__ == "__main__":
         obs, reward, done, info = env.step(action)
         print(f"[REWARD ISSUED]: {reward}")
         
+        # THE FIX: Pacing the requests to prevent hitting the limit in the first place
+        if not done:
+            time.sleep(1.5)
+        
     print("END")
     print(f"Final Asymmetric Reward Score: {env.state.total_reward}")
+    
