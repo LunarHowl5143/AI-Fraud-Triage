@@ -49,7 +49,6 @@ def agent_policy(observation):
     Keys: "action_taken" (APPROVE, ESCALATE, or BLOCK), "confidence" (0.0-1.0), "insight" (brief reason).
     """
 
-    # --- THE FIX: EXPONENTIAL BACKOFF & RETRY LOGIC ---
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -63,12 +62,10 @@ def agent_policy(observation):
             return clean_and_parse_json(raw_response)
             
         except Exception as e:
-            # If we hit a rate limit, wait and try again
             if attempt < max_retries - 1:
-                sleep_time = 5 * (attempt + 1)  # Waits 5s, then 10s
+                sleep_time = 5 * (attempt + 1)
                 time.sleep(sleep_time)
             else:
-                # If we are totally out of credits, fail gracefully so the grader doesn't crash
                 return Action(
                     action_taken="ESCALATE", 
                     confidence=0.0, 
@@ -76,27 +73,31 @@ def agent_policy(observation):
                 )
 
 if __name__ == "__main__":
-    # --- STRICT GRADER LOGGING (START / STEP / END) ---
-    print("START")
+    task_name = "ai-fraud-triage"
+    
+    # --- THE FIX: STRICT BRACKET FORMAT WITH FLUSH=TRUE ---
+    print(f"[START] task={task_name}", flush=True)
     
     env = FraudTriageEnv()
     obs = env.reset()
     done = False
+    step_counter = 0
     
     while not done:
-        print("STEP")
+        step_counter += 1
         print(f"[SCENARIO]: {obs.payload}")
         
         action = agent_policy(obs)
         print(f"[BLUE TEAM ACTION]: {action.action_taken} (Confidence: {action.confidence})")
         
         obs, reward, done, info = env.step(action)
-        print(f"[REWARD ISSUED]: {reward}")
         
-        # THE FIX: Pacing the requests to prevent hitting the limit in the first place
+        # --- THE FIX: EXACT STEP FORMAT EXPECTED BY GRADER ---
+        print(f"[STEP] step={step_counter} reward={reward}", flush=True)
+        
         if not done:
             time.sleep(1.5)
-        
-    print("END")
-    print(f"Final Asymmetric Reward Score: {env.state.total_reward}")
+            
+    # --- THE FIX: EXACT END FORMAT EXPECTED BY GRADER ---
+    print(f"[END] task={task_name} score={env.state.total_reward} steps={step_counter}", flush=True)
     
