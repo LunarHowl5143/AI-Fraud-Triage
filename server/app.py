@@ -14,6 +14,10 @@ from inference import agent_policy
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "Server is healthy"}
+
 # Global state
 env = FraudTriageEnv()
 obs = env.reset()
